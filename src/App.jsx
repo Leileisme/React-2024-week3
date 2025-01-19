@@ -1,5 +1,4 @@
 import { useState,useEffect,useRef } from 'react'
-import { Modal } from 'bootstrap';
 import * as bootstrap from "bootstrap";
 import axios from 'axios';
 
@@ -8,14 +7,13 @@ const path = import.meta.env.VITE_API_PATH
 
 
 // 登入
-const Login = ({user,setUser,getProducts,isLogin,setIsLogin}) => {
+const Login = ({user,setUser,getProducts,setIsLogin}) => {
   // 登入 API
   async function handleLogin(e){
     e.preventDefault()      
     try {
       const res = await axios.post(
         `${api}/v2/admin/signin`, user)
-      console.log(res);
       const {token,expired} = res.data
       document.cookie = `token=${token};expires=${new Date(expired)} `;
       axios.defaults.headers.common.Authorization = token
@@ -62,7 +60,7 @@ const Login = ({user,setUser,getProducts,isLogin,setIsLogin}) => {
 }
 
 // 產品列表
-const ProductList = ({products,setProducts,openEditModal,setProduct,handleDelete}) => {
+const ProductList = ({products,openEditModal,handleDelete}) => {
   return(
     <>
       <table className='table'>
@@ -99,37 +97,24 @@ const ProductList = ({products,setProducts,openEditModal,setProduct,handleDelete
   )
 }
 
-// 新增產品
-const ProductModal= ({addModalRef,addModal,product,setProduct,products,setProducts,isEdit, setIsEdit,getProducts}) => {
+// 產品 Modal Template
+const ProductModal= ({addModalRef,addModal,product,setProduct,isEdit, setIsEdit,getProducts}) => {
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
   // 新改產品API
   async function handleSubmit(e) {
     e.preventDefault()
+    if(isSubmitting) return
+    setIsSubmitting(true)
+
     try {
       const url = isEdit ? `${api}/v2/api/${path}/admin/product/${product.id}` : `${api}/v2/api/${path}/admin/product`
       const method = isEdit ? 'put' : 'post'
       const res = await axios[method](url,{data:product})
-      console.log(res);
       
       alert(isEdit ? '編輯成功':'新增成功')
-      
-      // setProducts((prev) => {
-      //   if (isEdit) {
-      //     return prev.map((p) => {
-      //       if (Object.keys(p).length === 0) {
-      //         // 如果 p 是空對象，可以選擇返回新的 product
-      //         return product;
-      //       }
-      //       return p.id === product.id ? product : p;
-      //     });
-      //   } else {
-      //     return [...prev, product];
-      //   }
-      // });
       getProducts()
-
-      console.log(products);
       
-
       setProduct({
         id: "",
         imageUrl: "",
@@ -156,7 +141,6 @@ const ProductModal= ({addModalRef,addModal,product,setProduct,products,setProduc
       ...product,
       [name]: name === "origin_price" || name === "price" ? Number(value) : value
     })
-    console.log(product);
     
   }
 
@@ -170,11 +154,13 @@ const ProductModal= ({addModalRef,addModal,product,setProduct,products,setProduc
 
   // 移除指定位置副圖
   function removeImagesUrl(idx){
-    setProduct((pre) => ({
+    setProduct((pre)=>{
+    const upDated = pre.imagesUrl.filter((_,i)=> i !== idx)
+    return{
       ...pre,
-      imagesUrl:pre.imagesUrl.filter((_,i) => i !== idx)
-      
-    }))
+      imagesUrl: upDated.length > 0 ? upDated : [""]
+    }
+    })
   }
 
   function handleImagesUrlChange(idx, val){
@@ -304,11 +290,38 @@ function App() {
   const [isLogin, setIsLogin] = useState(false)
   const [products,setProducts] = useState([])   // 產品列表
   const [isEdit, setIsEdit] = useState(false)   // 是否編輯
+  const [isSubmittingDelete, setIsSubmittingDelete] = useState(false)
+  
   const addModalRef = useRef(null)
   const addModal = useRef(null)
 
-  useEffect(() => {}, [products]);
 
+  useEffect(()=>{
+    const token = document.cookie.replace(
+      /(?:(?:^|.*;\s*)token\s*=\s*([^;]*).*$)|^.*$/,
+      "$1"
+    );
+
+    if (token) {
+      axios.defaults.headers.common.Authorization = token;
+    } else {
+      console.log("Token not found");
+    }
+
+    checkLogin()
+  },[])
+
+
+    async function checkLogin(){
+    try {
+      await axios.post(`${api}/v2/api/user/check`)
+      getProducts()
+      setIsLogin(true)
+    } catch (error) {
+      console.log(error);
+      
+    }
+  }
 
   const openAddModal = () =>{
     setIsEdit(false)
@@ -330,7 +343,6 @@ function App() {
   }
 
   const openEditModal = (productData) =>{
-    console.log("Editing product: ", productData);  // 確認傳入資料
     setIsEdit(true)
     setProduct({
       id: productData.id|| "",
@@ -352,7 +364,6 @@ function App() {
   async function getProducts() {
     try {
       const res =  await axios.get(`${api}/v2/api/${path}/admin/products`)
-      console.log(res);
       setProducts(res.data.products)        
     } catch (error) {
       console.log(error);
@@ -360,10 +371,11 @@ function App() {
   }
   
   async function handleDelete (id){
+    if(isSubmittingDelete) return
+    setIsSubmittingDelete(true)
     try {
       const res = await axios.delete(`${api}/v2/api/${path}/admin/product/${id}`)
       getProducts()
-      console.log(res)
       alert('成功刪除')
     } catch (error) {
       console.log(error);
