@@ -387,8 +387,6 @@ function App() {
     try {
       const res =  await axios.get(`${api}/v2/api/${path}/admin/products`)
       setProducts(res.data.products)  
-      console.log(res.data.products);
-      
     } catch (error) {
       console.log(error);
     }
