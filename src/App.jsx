@@ -80,7 +80,16 @@ const ProductList = ({products,openEditModal,handleDelete}) => {
                 <td>{item.title}</td>
                 <td>{item.origin_price}</td>
                 <td>{item.price}</td>
-                <td>{item.isAble}</td>
+
+                <td>
+                {
+                  item.is_enabled ? (
+                    <span className='text-success' >啟用</span>
+                  ) : (
+                    <span>未啟用</span>
+                  )
+                }
+                  </td>
                 <td>
                   <button type='button' className='btn btn-outline-primary me-2' onClick={()=>{openEditModal(item)}}>編輯</button>
                   <button type='button' className='btn btn-outline-danger' onClick={()=>{
@@ -101,7 +110,7 @@ const ProductList = ({products,openEditModal,handleDelete}) => {
 const ProductModal= ({addModalRef,addModal,product,setProduct,isEdit, setIsEdit,getProducts}) => {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // 新改產品API
+  // 增／改產品API
   async function handleSubmit(e) {
     e.preventDefault()
     if(isSubmitting) return
@@ -125,23 +134,26 @@ const ProductModal= ({addModalRef,addModal,product,setProduct,isEdit, setIsEdit,
         price: 0,
         description: "",
         content: "",
-        inAble: false,
-        imagesUrl: [''],
+        is_enabled: 0,
+        imagesUrl: [""],
       })
     addModal.current.hide()
     setIsEdit(false)
+    setIsSubmitting(false)
     } catch (error) {
       console.log(error);
     }
   }
 
   function handleProductChange(e){
-    const{name,value}= e.target
+    const{name,value,checked, type}= e.target
+    const upDatedCheckbox = (type === "checkbox" ? (checked ? 1 : 0) : value )
     setProduct({
       ...product,
-      [name]: name === "origin_price" || name === "price" ? Number(value) : value
+      [name]: name === "origin_price" || name === "price" 
+      ? Number(value) 
+      : upDatedCheckbox
     })
-    
   }
 
   // 新增空副圖
@@ -248,8 +260,18 @@ const ProductModal= ({addModalRef,addModal,product,setProduct,isEdit, setIsEdit,
 
                       <div className="col-12 mb-3">
                         <div className="form-check">
-                          <input className="form-check-input" type="checkbox" value="" id="isAble" name='isAble'onChange={handleProductChange}/>
-                          <label className="form-check-label" htmlFor="isAble" value={product.isAble || ''}>是否啟用</label>
+                          <input 
+                            className="form-check-input" 
+                            type="checkbox" 
+                            checked={product.is_enabled} 
+                            id="is_enabled" 
+                            name='is_enabled'
+                            onChange={handleProductChange}
+                          />
+                          <label 
+                          className="form-check-label" 
+                          htmlFor="is_enabled" >是否啟用
+                          </label>
                         </div>
                       </div>
 
@@ -259,7 +281,7 @@ const ProductModal= ({addModalRef,addModal,product,setProduct,isEdit, setIsEdit,
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary " data-bs-dismiss="modal">取消</button>
-                <button type="submit" className="btn btn-primary">確認</button>
+                <button type="submit" className="btn btn-primary" >確認</button>
               </div>
             </form>
           </div>
@@ -284,7 +306,7 @@ function App() {
     price: 0,
     description: "",
     content: "",
-    inAble: false,
+    is_enabled: 0,
     imagesUrl: [''],
   })
   const [isLogin, setIsLogin] = useState(false)
@@ -335,7 +357,7 @@ function App() {
       price: 0,
       description: "",
       content: "",
-      inAble: false,
+      is_enabled: 0,
       imagesUrl: [''],
     })
     addModal.current = new bootstrap.Modal(addModalRef.current)
@@ -354,8 +376,8 @@ function App() {
       price:productData.price||  0,
       description:productData.description ||  "",
       content:productData.content || "",
-      inAble:productData.inAble || false ,
-      imagesUrl: productData.imagesUrl || [''],
+      is_enabled:productData.is_enabled || 0 ,
+      imagesUrl: productData.imagesUrl || [""],
     })
     addModal.current = new bootstrap.Modal(addModalRef.current)
     addModal.current.show()
@@ -364,7 +386,9 @@ function App() {
   async function getProducts() {
     try {
       const res =  await axios.get(`${api}/v2/api/${path}/admin/products`)
-      setProducts(res.data.products)        
+      setProducts(res.data.products)  
+      console.log(res.data.products);
+      
     } catch (error) {
       console.log(error);
     }
@@ -377,6 +401,7 @@ function App() {
       const res = await axios.delete(`${api}/v2/api/${path}/admin/product/${id}`)
       getProducts()
       alert('成功刪除')
+      setIsSubmittingDelete(false)
     } catch (error) {
       console.log(error);
       
